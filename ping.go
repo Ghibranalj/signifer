@@ -21,6 +21,7 @@ type Pinger struct {
 	discord         *Discord             // Discord webhook client
 	previousStates  map[interface{}]bool // Track previous device states (ID -> IsUp)
 	stateMutex      sync.RWMutex         // Protects previousStates map
+	dbMutex         sync.Mutex           // Protects database writes (SQLite doesn't support concurrent writes)
 }
 
 // NewPinger creates a new Pinger with the required dependencies
@@ -133,10 +134,13 @@ func (p *Pinger) pingDevice(device sqlc.Device) {
 		LastPingLatency: latency,
 	}
 
+	p.dbMutex.Lock()
 	if _, err := p.repo.SetDeviceStateAndLatency(context.Background(), params); err != nil {
+		p.dbMutex.Unlock()
 		log.Printf("Error updating device %s: %v", device.DeviceName, err)
 		return
 	}
+	p.dbMutex.Unlock()
 
 	// Update our tracked state
 	p.setPreviousState(device.ID, isUp)
@@ -235,10 +239,13 @@ func (p *Pinger) markDeviceDown(device sqlc.Device) {
 		LastPingLatency: -1,
 	}
 
+	p.dbMutex.Lock()
 	if _, err := p.repo.SetDeviceStateAndLatency(context.Background(), params); err != nil {
+		p.dbMutex.Unlock()
 		log.Printf("Error updating device %s: %v", device.DeviceName, err)
 		return
 	}
+	p.dbMutex.Unlock()
 
 	// Update our tracked state
 	p.setPreviousState(device.ID, false)
