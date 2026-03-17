@@ -1,6 +1,6 @@
 # Signifer
 
-![Signifer](images/signifer.png)
+<img src="images/signifer.png" alt="Signifer" height="400">
 
 > A *signifer* was a standard bearer of the Roman legions. He carried a *signum* (military standard) for a cohort or century.
 
