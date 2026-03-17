@@ -7,7 +7,7 @@ services:
       - "80:9090"  # Host port 80 -> Container port 9090
     volumes:
       # Mount config.yaml from host
-      - ./config.yaml:/app/config.yaml:ro
+      - ./config.yaml:/config.yaml:ro
       # Persist SQLite database
       - ./data:/data
     cap_add:
