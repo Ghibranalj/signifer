@@ -22,13 +22,13 @@ FROM alpine:latest
 # Install runtime dependencies
 RUN apk add --no-cache libcap ca-certificates sqlite-libs
 
-WORKDIR /app
+WORKDIR /
 
 # Copy binary from builder
-COPY --from=builder /app/signifer .
+COPY --from=builder /signifer .
 
 # Grant CAP_NET_RAW capability for ICMP pings
-RUN setcap cap_net_raw=+ep /app/signifer
+RUN setcap cap_net_raw=+ep /signifer
 
 # Create directory for database
 RUN mkdir -p /data
@@ -37,4 +37,4 @@ RUN mkdir -p /data
 EXPOSE 9090
 
 # Run the application
-CMD ["/app/signifer"]
+CMD ["/signifer"]
