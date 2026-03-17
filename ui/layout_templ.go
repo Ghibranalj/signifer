@@ -42,7 +42,7 @@ func BaseLayout(title string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</title><script src=\"https://cdn.tailwindcss.com\"></script><script>\n\t\t\t\ttailwind.config = {\n\t\t\t\t  darkMode: 'class',\n\t\t\t\t  theme: {\n\t\t\t\t\textend: {\n\t\t\t\t\t  colors: {\n\t\t\t\t\t\tdark: {\n\t\t\t\t\t\t  900: '#0a0a0a',\n\t\t\t\t\t\t  800: '#171717',\n\t\t\t\t\t\t  700: '#262626',\n\t\t\t\t\t\t}\n\t\t\t\t\t  }\n\t\t\t\t\t}\n\t\t\t\t  }\n\t\t\t\t}\n\t\t\t</script></head><body class=\"bg-dark-900 text-gray-100 min-h-screen\"><div class=\"container mx-auto px-4 py-8 max-w-4xl\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</title><script src=\"https://cdn.tailwindcss.com\"></script><script>\n\t\t\t\ttailwind.config = {\n\t\t\t\t  darkMode: 'class',\n\t\t\t\t  theme: {\n\t\t\t\t\textend: {\n\t\t\t\t\t  colors: {\n\t\t\t\t\t\tdark: {\n\t\t\t\t\t\t  900: '#0a0a0a',\n\t\t\t\t\t\t  800: '#171717',\n\t\t\t\t\t\t  700: '#262626',\n\t\t\t\t\t\t}\n\t\t\t\t\t  }\n\t\t\t\t\t}\n\t\t\t\t  }\n\t\t\t\t}\n\t\t\t</script></head><body class=\"bg-dark-900 text-gray-100 min-h-screen\"><div class=\"container mx-auto px-4 py-8 max-w-4xl\"><div class=\"flex items-center gap-3 mb-6\"><img src=\"/images/signifer.png\" alt=\"Signifer\" class=\"h-10 w-auto\"><h1 class=\"text-2xl font-bold\">Signifer</h1></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"net/http"
 
@@ -9,6 +10,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
 )
+
+//go:embed images/*
+var imagesFS embed.FS
 
 type Rest struct {
 	repo     *sqlc.Queries
@@ -39,6 +43,9 @@ func (r *Rest) Start(port int) error {
 }
 
 func (r *Rest) RegisterRoutes(e *echo.Echo) {
+	// Static files (embedded)
+	e.GET("/images/*", r.serveImage)
+
 	// List devices
 	e.GET("/", r.listDevices)
 	e.GET("/devices", r.listDevices)
@@ -154,4 +161,17 @@ func (r *Rest) deleteDevice(c *echo.Context) error {
 	}
 
 	return c.Redirect(http.StatusFound, "/")
+}
+
+func (r *Rest) serveImage(c *echo.Context) error {
+	path := c.Param("*")
+	data, err := imagesFS.ReadFile("images/" + path)
+	if err != nil {
+		return c.NoContent(http.StatusNotFound)
+	}
+
+	c.Response().Header().Set("Content-Type", "image/png")
+	c.Response().WriteHeader(http.StatusOK)
+	c.Response().Write(data)
+	return nil
 }
