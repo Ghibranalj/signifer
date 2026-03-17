@@ -13,3 +13,7 @@ auth:
 # Ping configuration
 ping:
   interval_seconds: 30  # How often to ping devices (default: 30)
+
+# Database configuration
+db:
+  path: "./data/signifer.db"

@@ -4,10 +4,12 @@ import (
 	"database/sql"
 	_ "embed"
 	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/ghibranalj/signifer/db/sqlc"
-	_ "modernc.org/sqlite"
 	"github.com/spf13/viper"
+	_ "modernc.org/sqlite"
 )
 
 type Config struct {
@@ -25,6 +27,10 @@ type Config struct {
 	Ping struct {
 		IntervalSeconds int `mapstructure:"interval_seconds"`
 	}
+
+	DB struct {
+		Path string `mapstructure:"path"`
+	} `mapstructure:"db"`
 }
 
 var cfg Config
@@ -42,6 +48,7 @@ func init() {
 	viper.SetDefault("auth.user", "admin")
 	viper.SetDefault("auth.password", "admin")
 	viper.SetDefault("ping.interval_seconds", 30)
+	viper.SetDefault("db.path", "./data/signifer.db")
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
@@ -58,7 +65,13 @@ func init() {
 
 func main() {
 
-	db, err := sql.Open("sqlite", "./signifer.db")
+	folder := filepath.Dir(cfg.DB.Path)
+	err := os.MkdirAll(folder, 0755)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	db, err := sql.Open("sqlite", cfg.DB.Path)
 	if err != nil {
 		log.Fatal(err)
 	}
