@@ -1,5 +1,7 @@
 # Signifer
 
+![Signifer](images/signifer.png)
+
 > A *signifer* was a standard bearer of the Roman legions. He carried a *signum* (military standard) for a cohort or century.
 
 Signifer is a network device monitoring application that tracks device availability via ICMP pings and sends Discord webhook notifications when status changes occur.
