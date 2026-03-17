@@ -1,0 +1,51 @@
+package ui
+
+templ DeviceForm(action string, id string, deviceName string, hostname string, submitLabel string) {
+	<form method="POST" action={ action } class="bg-dark-800 border border-dark-700 rounded-lg p-6">
+		if id != "" {
+			<input type="hidden" name="id" value={ id }/>
+		}
+		<div class="mb-4">
+			<label for="device_name" class="block text-sm font-medium text-gray-300 mb-2">
+				Device Name
+			</label>
+			<input
+				type="text"
+				id="device_name"
+				name="device_name"
+				value={ deviceName }
+				required
+				class="w-full bg-dark-900 border border-dark-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+				placeholder="e.g., Web Server 1"
+			/>
+		</div>
+		<div class="mb-6">
+			<label for="hostname" class="block text-sm font-medium text-gray-300 mb-2">
+				Hostname
+			</label>
+			<input
+				type="text"
+				id="hostname"
+				name="hostname"
+				value={ hostname }
+				required
+				class="w-full bg-dark-900 border border-dark-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+				placeholder="e.g., server01.example.com"
+			/>
+		</div>
+		<div class="flex gap-4">
+			<button
+				type="submit"
+				class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors"
+			>
+				{ submitLabel }
+			</button>
+			<a
+				href="/"
+				class="bg-dark-700 hover:bg-dark-600 text-gray-300 font-medium py-2 px-6 rounded-lg transition-colors"
+			>
+				Cancel
+			</a>
+		</div>
+	</form>
+}

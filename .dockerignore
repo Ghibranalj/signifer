@@ -1,0 +1,28 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+LICENSE
+
+# Config (mounted separately in docker-compose)
+config.yaml
+
+# Data
+*.db
+data/
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Build artifacts
+signifer
+build.sh
+
+# IDE
+.vscode
+.idea
+*.swp

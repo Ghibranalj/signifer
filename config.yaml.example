@@ -1,0 +1,15 @@
+# Web server port (default: 9090)
+port: 9090
+
+# Discord webhook URL (REQUIRED)
+discord:
+  webhook_url: "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN"
+
+# Basic authentication (default: admin/admin)
+auth:
+  user: "admin"
+  password: "secure_password"
+
+# Ping configuration
+ping:
+  interval_seconds: 30  # How often to ping devices (default: 30)

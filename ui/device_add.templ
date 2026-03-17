@@ -1,0 +1,11 @@
+package ui
+
+templ DeviceAddPage() {
+	@BaseLayout("Add Device") {
+		<div class="mb-8">
+			<h1 class="text-3xl font-bold">Add Device</h1>
+			<p class="text-gray-400 mt-2">Enter the device name and hostname of the device you want to monitor.</p>
+		</div>
+		@DeviceForm("/devices", "", "", "", "Create Device")
+	}
+}

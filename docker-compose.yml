@@ -1,0 +1,14 @@
+services:
+  signifer:
+    build: .
+    container_name: signifer
+    restart: unless-stopped
+    ports:
+      - "80:9090"  # Host port 80 -> Container port 9090
+    volumes:
+      # Mount config.yaml from host
+      - ./config.yaml:/app/config.yaml:ro
+      # Persist SQLite database
+      - ./data:/data
+    cap_add:
+      - CAP_NET_RAW  # Required for ICMP pinging

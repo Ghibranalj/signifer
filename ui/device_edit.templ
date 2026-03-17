@@ -1,0 +1,23 @@
+package ui
+
+import (
+	"fmt"
+
+	"github.com/ghibranalj/signifer/db/sqlc"
+)
+
+templ DeviceEditPage(device sqlc.Device) {
+	@BaseLayout("Edit Device") {
+		<div class="mb-8">
+			<h1 class="text-3xl font-bold">Edit Device</h1>
+			<p class="text-gray-400 mt-2">Update the device name and hostname.</p>
+		</div>
+		@DeviceForm(
+			fmt.Sprintf("/devices/%s", device.ID),
+			fmt.Sprintf("%v", device.ID),
+			device.DeviceName,
+			device.Hostname,
+			"Update Device",
+		)
+	}
+}

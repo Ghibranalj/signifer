@@ -1,0 +1,63 @@
+package ui
+
+import "github.com/ghibranalj/signifer/db/sqlc"
+
+templ DeviceList(devices []sqlc.Device) {
+	@BaseLayout("Signifer") {
+		<div class="flex justify-between items-center mb-8">
+			<h1 class="text-3xl font-bold">Signifer</h1>
+			<a href="/devices/new" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+				Add Device
+			</a>
+		</div>
+		if len(devices) == 0 {
+			<div class="bg-dark-800 border border-dark-700 rounded-lg p-8 text-center">
+				<p class="text-gray-400 text-lg">No devices found.</p>
+				<p class="text-gray-500 mt-2">Click "Add Device" to get started.</p>
+			</div>
+		} else {
+			<div class="space-y-4">
+				for _, device := range devices {
+					@DeviceCard(device)
+				}
+			</div>
+		}
+	}
+}
+
+templ DeviceCard(device sqlc.Device) {
+	<div class="bg-dark-800 border border-dark-700 rounded-lg p-6">
+		<div class="flex justify-between items-start">
+			<div class="flex-1">
+				<h2 class="text-xl font-semibold text-white mb-1">{ device.DeviceName }</h2>
+				<p class="text-gray-400 text-sm mb-3">{ device.Hostname }</p>
+				<div class="flex items-center gap-4">
+					if device.IsUp {
+						<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-900 text-green-200">
+							Online
+						</span>
+					} else {
+						<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-900 text-red-200">
+							Offline
+						</span>
+					}
+					<span class="text-gray-400 text-sm">
+						if device.LastPingLatency >= 0 {
+							Latency: { device.LastPingLatency }ms
+						} else {
+							Latency: N/A
+						}
+					</span>
+				</div>
+			</div>
+			<div class="flex gap-2">
+				<a href={ urlF("/devices/%s/edit", device.ID) } class="text-blue-400 hover:text-blue-300 font-medium text-sm">
+					Edit
+				</a>
+				<a href={ urlF("/devices/%s/delete", device.ID) } class="text-red-400 hover:text-red-300 font-medium text-sm">
+					Delete
+				</a>
+			</div>
+		</div>
+	</div>
+}
