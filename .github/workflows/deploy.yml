@@ -1,0 +1,29 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: signifer.infra
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script_stop: true
+          script: |
+            # Add your deployment commands here
+            echo "Connected to signifer.infra"
+            # Example commands:
+            docker pull registry.mrjaringan.com/signifer:latest
+            cd signifer
+            docker compose down
+            docker compose up -d
