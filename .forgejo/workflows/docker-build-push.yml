@@ -8,7 +8,7 @@ on:
 
 env:
   REGISTRY: registry.mrjaringan.com
-  IMAGE_NAME: signifer
+  IMAGE_NAME: public/signifer
 
 jobs:
   build-and-push:
