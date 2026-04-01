@@ -1,7 +1,6 @@
 services:
   signifer:
-    build: .
-    container_name: signifer
+    container_name: registry.mrjaringan.com/public/signifer:latest
     restart: unless-stopped
     ports:
       - "80:9090"  # Host port 80 -> Container port 9090
