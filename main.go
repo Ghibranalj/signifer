@@ -2,17 +2,22 @@ package main
 
 import (
 	"database/sql"
+	"embed"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
 
 	"github.com/ghibranalj/signifer/db/sqlc"
 	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/sqlite"
+	_ "github.com/golang-migrate/migrate/v4/database/sqlite3"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/spf13/viper"
 	_ "modernc.org/sqlite"
 )
+
+//go:embed db/migrations
+var migrationsFS embed.FS
 
 type Config struct {
 	Port    int `mapstructure:"port"`
@@ -64,6 +69,7 @@ func init() {
 	}
 }
 
+
 func main() {
 
 	folder := filepath.Dir(cfg.DB.Path)
@@ -77,26 +83,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Run database migrations
-	driver, err := sqlite.WithInstance(db, &sqlite.Config{})
-	if err != nil {
+	if err := runMigrations(cfg.DB.Path); err != nil {
 		log.Fatal(err)
 	}
-
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://db/migrations",
-		"sqlite",
-		driver,
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = m.Up()
-	if err != nil && err != migrate.ErrNoChange {
-		log.Fatal(err)
-	}
-	log.Println("Database migrations completed")
 
 	queries := sqlc.New(db)
 
@@ -122,4 +111,56 @@ func main() {
 	if err := rest.Start(cfg.Port); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func runMigrations(dbPath string) error {
+	tempDir, err := os.MkdirTemp("", "signifer-migrations-*")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tempDir)
+
+	migrations, err := fs.Sub(migrationsFS, "db/migrations")
+	if err != nil {
+		return err
+	}
+
+	fs.WalkDir(migrations, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+
+		content, err := fs.ReadFile(migrations, path)
+		if err != nil {
+			return err
+		}
+
+		destPath := filepath.Join(tempDir, path)
+		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(destPath, content, 0644); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	m, err := migrate.New(
+		"file://"+tempDir,
+		"sqlite3://"+dbPath,
+	)
+	if err != nil {
+		return err
+	}
+
+	err = m.Up()
+	if err != nil && err != migrate.ErrNoChange {
+		return err
+	}
+
+	log.Println("Database migrations completed")
+	return nil
 }
