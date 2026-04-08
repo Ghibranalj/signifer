@@ -1,4 +1,4 @@
-CREATE TABLE devices (
+CREATE TABLE IF NOT EXISTS devices (
     id UUID NOT NULL PRIMARY KEY,
     device_name TEXT NOT NULL DEFAULT '',
     hostname TEXT NOT NULL,
