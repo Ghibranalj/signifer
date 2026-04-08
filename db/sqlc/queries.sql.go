@@ -7,6 +7,8 @@ package sqlc
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 const createDevices = `-- name: CreateDevices :one
@@ -14,13 +16,13 @@ INSERT INTO devices(
   id, device_name, hostname
 )
 VALUES (?, ?, ?)
-RETURNING id, device_name, hostname, last_ping_latency, is_up
+RETURNING id, device_name, hostname, last_ping_latency, is_up, failed_pings, alerted_down
 `
 
 type CreateDevicesParams struct {
-	ID         interface{} `json:"id"`
-	DeviceName string      `json:"device_name"`
-	Hostname   string      `json:"hostname"`
+	ID         uuid.UUID `json:"id"`
+	DeviceName string    `json:"device_name"`
+	Hostname   string    `json:"hostname"`
 }
 
 func (q *Queries) CreateDevices(ctx context.Context, arg CreateDevicesParams) (Device, error) {
@@ -32,6 +34,8 @@ func (q *Queries) CreateDevices(ctx context.Context, arg CreateDevicesParams) (D
 		&i.Hostname,
 		&i.LastPingLatency,
 		&i.IsUp,
+		&i.FailedPings,
+		&i.AlertedDown,
 	)
 	return i, err
 }
@@ -41,7 +45,7 @@ DELETE FROM devices
 WHERE id = ?
 `
 
-func (q *Queries) DeleteDevice(ctx context.Context, id interface{}) (int64, error) {
+func (q *Queries) DeleteDevice(ctx context.Context, id uuid.UUID) (int64, error) {
 	result, err := q.db.ExecContext(ctx, deleteDevice, id)
 	if err != nil {
 		return 0, err
@@ -50,7 +54,7 @@ func (q *Queries) DeleteDevice(ctx context.Context, id interface{}) (int64, erro
 }
 
 const getDevices = `-- name: GetDevices :many
-SELECT id, device_name, hostname, last_ping_latency, is_up FROM devices
+SELECT id, device_name, hostname, last_ping_latency, is_up, failed_pings, alerted_down FROM devices
 `
 
 func (q *Queries) GetDevices(ctx context.Context) ([]Device, error) {
@@ -68,6 +72,8 @@ func (q *Queries) GetDevices(ctx context.Context) ([]Device, error) {
 			&i.Hostname,
 			&i.LastPingLatency,
 			&i.IsUp,
+			&i.FailedPings,
+			&i.AlertedDown,
 		); err != nil {
 			return nil, err
 		}
@@ -84,19 +90,27 @@ func (q *Queries) GetDevices(ctx context.Context) ([]Device, error) {
 
 const setDeviceStateAndLatency = `-- name: SetDeviceStateAndLatency :one
 UPDATE devices
-SET is_up = ?, last_ping_latency = ?
+SET is_up = ?, last_ping_latency = ?, failed_pings = ?, alerted_down = ?
 WHERE id = ?
-RETURNING id, device_name, hostname, last_ping_latency, is_up
+RETURNING id, device_name, hostname, last_ping_latency, is_up, failed_pings, alerted_down
 `
 
 type SetDeviceStateAndLatencyParams struct {
-	IsUp            bool        `json:"is_up"`
-	LastPingLatency int64       `json:"last_ping_latency"`
-	ID              interface{} `json:"id"`
+	IsUp            bool      `json:"is_up"`
+	LastPingLatency int64     `json:"last_ping_latency"`
+	FailedPings     int64     `json:"failed_pings"`
+	AlertedDown     bool      `json:"alerted_down"`
+	ID              uuid.UUID `json:"id"`
 }
 
 func (q *Queries) SetDeviceStateAndLatency(ctx context.Context, arg SetDeviceStateAndLatencyParams) (Device, error) {
-	row := q.db.QueryRowContext(ctx, setDeviceStateAndLatency, arg.IsUp, arg.LastPingLatency, arg.ID)
+	row := q.db.QueryRowContext(ctx, setDeviceStateAndLatency,
+		arg.IsUp,
+		arg.LastPingLatency,
+		arg.FailedPings,
+		arg.AlertedDown,
+		arg.ID,
+	)
 	var i Device
 	err := row.Scan(
 		&i.ID,
@@ -104,6 +118,8 @@ func (q *Queries) SetDeviceStateAndLatency(ctx context.Context, arg SetDeviceSta
 		&i.Hostname,
 		&i.LastPingLatency,
 		&i.IsUp,
+		&i.FailedPings,
+		&i.AlertedDown,
 	)
 	return i, err
 }
@@ -112,13 +128,13 @@ const updateDevices = `-- name: UpdateDevices :one
 UPDATE devices
 SET device_name = ?, hostname = ?
 WHERE id = ?
-RETURNING id, device_name, hostname, last_ping_latency, is_up
+RETURNING id, device_name, hostname, last_ping_latency, is_up, failed_pings, alerted_down
 `
 
 type UpdateDevicesParams struct {
-	DeviceName string      `json:"device_name"`
-	Hostname   string      `json:"hostname"`
-	ID         interface{} `json:"id"`
+	DeviceName string    `json:"device_name"`
+	Hostname   string    `json:"hostname"`
+	ID         uuid.UUID `json:"id"`
 }
 
 func (q *Queries) UpdateDevices(ctx context.Context, arg UpdateDevicesParams) (Device, error) {
@@ -130,6 +146,8 @@ func (q *Queries) UpdateDevices(ctx context.Context, arg UpdateDevicesParams) (D
 		&i.Hostname,
 		&i.LastPingLatency,
 		&i.IsUp,
+		&i.FailedPings,
+		&i.AlertedDown,
 	)
 	return i, err
 }

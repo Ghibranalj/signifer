@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ghibranalj/signifer/db/sqlc"
+	"github.com/google/uuid"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
@@ -16,25 +17,21 @@ import (
 type Pinger struct {
 	repo            sqlc.Queries
 	intervalSeconds int
+	failedThreshold int
 	cancel          context.CancelFunc
 	wg              sync.WaitGroup
-	discord         *Discord             // Discord webhook client
-	previousStates  map[interface{}]bool // Track previous device states (ID -> IsUp)
-	stateMutex      sync.RWMutex         // Protects previousStates map
-	dbMutex         sync.Mutex           // Protects database writes (SQLite doesn't support concurrent writes)
+	discord         *Discord // Discord webhook client
+	dbMutex         sync.Mutex // Protects database writes (SQLite doesn't support concurrent writes)
 }
 
 // NewPinger creates a new Pinger with the required dependencies
-func NewPinger(repo *sqlc.Queries, intervalSeconds int, discord *Discord) *Pinger {
+func NewPinger(repo *sqlc.Queries, intervalSeconds int, failedThreshold int, discord *Discord) *Pinger {
 	p := &Pinger{
 		repo:            *repo,
 		intervalSeconds: intervalSeconds,
+		failedThreshold: failedThreshold,
 		discord:         discord,
-		previousStates:  make(map[interface{}]bool),
 	}
-
-	// Initialize previous states from database
-	p.initializePreviousStates()
 
 	return p
 }
@@ -44,9 +41,7 @@ func (p *Pinger) Start() {
 	ctx, cancel := context.WithCancel(context.Background())
 	p.cancel = cancel
 
-	p.wg.Add(1)
-	go func() {
-		defer p.wg.Done()
+	p.wg.Go(func() {
 		ticker := time.NewTicker(time.Duration(p.intervalSeconds) * time.Second)
 		defer ticker.Stop()
 
@@ -59,9 +54,9 @@ func (p *Pinger) Start() {
 				p.pingAllDevices()
 			}
 		}
-	}()
+	})
 
-	log.Printf("Pinger started with %d second interval", p.intervalSeconds)
+	log.Printf("Pinger started with %d second interval, failed threshold: %d", p.intervalSeconds, p.failedThreshold)
 }
 
 // Stop gracefully shuts down the pinger
@@ -103,9 +98,6 @@ func (p *Pinger) pingDevice(device sqlc.Device) {
 		return
 	}
 
-	// Get previous state before ping
-	wasUp := p.getPreviousState(device.ID)
-
 	// Perform ping
 	isUp, latency := p.icmpPing(dst)
 
@@ -116,34 +108,56 @@ func (p *Pinger) pingDevice(device sqlc.Device) {
 		log.Printf("Ping failed: %s @ %s - timeout", device.DeviceName, device.Hostname)
 	}
 
-	// Check for state change
-	if wasUp != isUp {
-		reason := "timeout"
-		if !isUp {
-			reason = "ping timeout"
-		} else {
-			reason = "ping successful"
-		}
-		p.notifyStateChange(device, wasUp, isUp, latency, reason)
+	// Calculate failed pings count and new alerted state
+	failedPings := int64(0)
+	alertedDown := device.AlertedDown
+
+	if !isUp {
+		failedPings = device.FailedPings + 1
 	}
 
-	// Update device state in database
+	// No state change - just update and return
+	if device.IsUp == isUp {
+		p.updateDeviceState(device.ID, isUp, latency, failedPings, alertedDown)
+		return
+	}
+
+	// Device went down - notify after threshold reached
+	if !isUp && failedPings >= int64(p.failedThreshold) && !device.AlertedDown {
+		alertedDown = true
+		p.notifyStateChange(device, true, false, latency, "ping timeout")
+		p.updateDeviceState(device.ID, isUp, latency, failedPings, alertedDown)
+		return
+	}
+
+	// Device recovered - notify if we had alerted
+	if isUp && device.AlertedDown {
+		alertedDown = false
+		p.notifyStateChange(device, false, true, latency, "ping successful")
+		p.updateDeviceState(device.ID, isUp, latency, failedPings, alertedDown)
+		return
+	}
+
+	// State changed but threshold not reached - just update
+	p.updateDeviceState(device.ID, isUp, latency, failedPings, alertedDown)
+}
+
+// updateDeviceState updates the device state in the database
+func (p *Pinger) updateDeviceState(id uuid.UUID, isUp bool, latency int64, failedPings int64, alertedDown bool) {
 	params := sqlc.SetDeviceStateAndLatencyParams{
-		ID:              device.ID,
+		ID:              id,
 		IsUp:            isUp,
 		LastPingLatency: latency,
+		FailedPings:     failedPings,
+		AlertedDown:     alertedDown,
 	}
 
 	p.dbMutex.Lock()
-	if _, err := p.repo.SetDeviceStateAndLatency(context.Background(), params); err != nil {
-		p.dbMutex.Unlock()
-		log.Printf("Error updating device %s: %v", device.DeviceName, err)
-		return
-	}
-	p.dbMutex.Unlock()
+	defer p.dbMutex.Unlock()
 
-	// Update our tracked state
-	p.setPreviousState(device.ID, isUp)
+	if _, err := p.repo.SetDeviceStateAndLatency(context.Background(), params); err != nil {
+		log.Printf("Error updating device: %v", err)
+	}
 }
 
 // icmpPing sends an ICMP echo request and returns success status and latency in ms
@@ -223,64 +237,25 @@ func (p *Pinger) icmpPing(dst *net.IPAddr) (bool, int64) {
 
 // markDeviceDown updates device as offline when unreachable
 func (p *Pinger) markDeviceDown(device sqlc.Device) {
-	// Get previous state before marking down
-	wasUp := p.getPreviousState(device.ID)
-
 	log.Printf("Ping failed: %s @ %s - unreachable", device.DeviceName, device.Hostname)
 
-	// Notify if state changed (was up, now down)
-	if wasUp {
-		p.notifyStateChange(device, wasUp, false, -1, "DNS resolution error")
-	}
+	failedPings := device.FailedPings + 1
+	alertedDown := device.AlertedDown
 
-	params := sqlc.SetDeviceStateAndLatencyParams{
-		ID:              device.ID,
-		IsUp:            false,
-		LastPingLatency: -1,
-	}
-
-	p.dbMutex.Lock()
-	if _, err := p.repo.SetDeviceStateAndLatency(context.Background(), params); err != nil {
-		p.dbMutex.Unlock()
-		log.Printf("Error updating device %s: %v", device.DeviceName, err)
-		return
-	}
-	p.dbMutex.Unlock()
-
-	// Update our tracked state
-	p.setPreviousState(device.ID, false)
-}
-
-// initializePreviousStates loads current device states from database
-func (p *Pinger) initializePreviousStates() {
-	devices, err := p.repo.GetDevices(context.Background())
-	if err != nil {
-		log.Printf("Error initializing device states: %v", err)
+	// Already down - just increment counter
+	if !device.IsUp {
+		p.updateDeviceState(device.ID, false, -1, failedPings, alertedDown)
 		return
 	}
 
-	p.stateMutex.Lock()
-	defer p.stateMutex.Unlock()
-
-	for _, device := range devices {
-		p.previousStates[device.ID] = device.IsUp
+	// Was up, now down - check threshold
+	shouldAlert := failedPings >= int64(p.failedThreshold) && !device.AlertedDown
+	if shouldAlert {
+		alertedDown = true
+		p.notifyStateChange(device, true, false, -1, "DNS resolution error")
 	}
 
-	log.Printf("Initialized states for %d devices", len(devices))
-}
-
-// getPreviousState returns the previous state of a device (thread-safe)
-func (p *Pinger) getPreviousState(deviceID interface{}) bool {
-	p.stateMutex.RLock()
-	defer p.stateMutex.RUnlock()
-	return p.previousStates[deviceID]
-}
-
-// setPreviousState updates the previous state of a device (thread-safe)
-func (p *Pinger) setPreviousState(deviceID interface{}, isUp bool) {
-	p.stateMutex.Lock()
-	defer p.stateMutex.Unlock()
-	p.previousStates[deviceID] = isUp
+	p.updateDeviceState(device.ID, false, -1, failedPings, alertedDown)
 }
 
 // notifyStateChange sends a Discord notification when device status changes

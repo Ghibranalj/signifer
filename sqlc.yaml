@@ -1,7 +1,7 @@
 version: "2"
 sql:
   - engine: "sqlite"
-    schema: "./db/schema.sql"
+    schema: "./db/migrations/"
     queries: "./db/queries.sql"
     gen:
       go:
@@ -9,30 +9,12 @@ sql:
         package: "sqlc"
         out: "./db/sqlc"
         overrides:
-          - db_type: "timestamptz"
-            nullable: false
-            go_type:
-              import: "time"
-              type: "Time"
-          - db_type: "uuid"
+          - column: "devices.id"
             go_type:
               import: "github.com/google/uuid"
               type: "UUID"
-          - db_type: "uuid"
-            nullable: true
-            go_type:
-              import: "github.com/google/uuid"
-              type: "NullUUID"
           - db_type: "text"
             nullable: true
             go_type:
               import: "github.com/guregu/null/v6"
               type: "String"
-          - db_type: "pg_catalog.int4"
-            nullable: true
-            go_type:
-              import: "github.com/guregu/null/v6"
-              type: "Int"
-          - db_type: "pg_catalog.int4"
-            nullable: false
-            go_type: "int32"

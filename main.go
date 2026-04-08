@@ -2,12 +2,14 @@ package main
 
 import (
 	"database/sql"
-	_ "embed"
 	"log"
 	"os"
 	"path/filepath"
 
 	"github.com/ghibranalj/signifer/db/sqlc"
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/sqlite"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/spf13/viper"
 	_ "modernc.org/sqlite"
 )
@@ -26,6 +28,7 @@ type Config struct {
 
 	Ping struct {
 		IntervalSeconds int `mapstructure:"interval_seconds"`
+		FailedThreshold int `mapstructure:"failed_threshold"`
 	}
 
 	DB struct {
@@ -34,9 +37,6 @@ type Config struct {
 }
 
 var cfg Config
-
-//go:embed db/schema.sql
-var schemaSQL string
 
 func init() {
 	viper.SetConfigName("config")
@@ -48,6 +48,7 @@ func init() {
 	viper.SetDefault("auth.user", "admin")
 	viper.SetDefault("auth.password", "admin")
 	viper.SetDefault("ping.interval_seconds", 30)
+	viper.SetDefault("ping.failed_threshold", 3)
 	viper.SetDefault("db.path", "./data/signifer.db")
 
 	if err := viper.ReadInConfig(); err != nil {
@@ -76,11 +77,26 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Run schema migration
-	_, err = db.Exec(schemaSQL)
+	// Run database migrations
+	driver, err := sqlite.WithInstance(db, &sqlite.Config{})
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://db/migrations",
+		"sqlite",
+		driver,
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = m.Up()
+	if err != nil && err != migrate.ErrNoChange {
+		log.Fatal(err)
+	}
+	log.Println("Database migrations completed")
 
 	queries := sqlc.New(db)
 
@@ -98,7 +114,7 @@ func main() {
 	log.Println("Discord webhook configured")
 
 	// Start background pinger with Discord client
-	pinger := NewPinger(queries, cfg.Ping.IntervalSeconds, discordClient)
+	pinger := NewPinger(queries, cfg.Ping.IntervalSeconds, cfg.Ping.FailedThreshold, discordClient)
 	pinger.Start()
 	defer pinger.Stop()
 

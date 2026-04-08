@@ -83,7 +83,7 @@ func (r *Rest) createDevice(c *echo.Context) error {
 		return c.Redirect(http.StatusFound, "/devices/new")
 	}
 
-	id := uuid.New().String()
+	id := uuid.New()
 	params := sqlc.CreateDevicesParams{
 		ID:         id,
 		DeviceName: deviceName,
@@ -106,7 +106,7 @@ func (r *Rest) showEditDevice(c *echo.Context) error {
 	}
 
 	for _, device := range devices {
-		if fmt.Sprintf("%s", device.ID) == id {
+		if device.ID.String() == id {
 			return ui.Render(c, ui.DeviceEditPage(device))
 		}
 	}
@@ -115,11 +115,15 @@ func (r *Rest) showEditDevice(c *echo.Context) error {
 }
 
 func (r *Rest) updateDevice(c *echo.Context) error {
-	id := c.Param("id")
+	idStr := c.Param("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		return c.Redirect(http.StatusFound, "/")
+	}
 	deviceName := c.FormValue("device_name")
 	hostname := c.FormValue("hostname")
 	if deviceName == "" || hostname == "" {
-		return c.Redirect(http.StatusFound, fmt.Sprintf("/devices/%s/edit", id))
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/devices/%s/edit", idStr))
 	}
 
 	params := sqlc.UpdateDevicesParams{
@@ -128,7 +132,7 @@ func (r *Rest) updateDevice(c *echo.Context) error {
 		Hostname:   hostname,
 	}
 
-	_, err := r.repo.UpdateDevices(c.Request().Context(), params)
+	_, err = r.repo.UpdateDevices(c.Request().Context(), params)
 	if err != nil {
 		return err
 	}
@@ -144,7 +148,7 @@ func (r *Rest) showDeleteDevice(c *echo.Context) error {
 	}
 
 	for _, device := range devices {
-		if fmt.Sprintf("%s", device.ID) == id {
+		if device.ID.String() == id {
 			return ui.Render(c, ui.DeviceDeletePage(device))
 		}
 	}
@@ -153,9 +157,13 @@ func (r *Rest) showDeleteDevice(c *echo.Context) error {
 }
 
 func (r *Rest) deleteDevice(c *echo.Context) error {
-	id := c.Param("id")
+	idStr := c.Param("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		return c.Redirect(http.StatusFound, "/")
+	}
 
-	_, err := r.repo.DeleteDevice(c.Request().Context(), id)
+	_, err = r.repo.DeleteDevice(c.Request().Context(), id)
 	if err != nil {
 		return err
 	}

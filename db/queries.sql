@@ -18,7 +18,7 @@ RETURNING *;
 
 -- name: SetDeviceStateAndLatency :one
 UPDATE devices
-SET is_up = ?, last_ping_latency = ?
+SET is_up = ?, last_ping_latency = ?, failed_pings = ?, alerted_down = ?
 WHERE id = ?
 RETURNING *;
 

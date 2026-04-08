@@ -1,8 +1,7 @@
-CREATE TABLE IF NOT EXISTS devices (
+CREATE TABLE devices (
     id UUID NOT NULL PRIMARY KEY,
     device_name TEXT NOT NULL DEFAULT '',
     hostname TEXT NOT NULL,
-
     last_ping_latency INTEGER NOT NULL DEFAULT -1,
-    is_up             BOOLEAN NOT NULL DEFAULT FALSE        
-); 
+    is_up BOOLEAN NOT NULL DEFAULT FALSE
+);

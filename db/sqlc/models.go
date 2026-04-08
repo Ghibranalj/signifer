@@ -4,10 +4,16 @@
 
 package sqlc
 
+import (
+	"github.com/google/uuid"
+)
+
 type Device struct {
-	ID              interface{} `json:"id"`
-	DeviceName      string      `json:"device_name"`
-	Hostname        string      `json:"hostname"`
-	LastPingLatency int64       `json:"last_ping_latency"`
-	IsUp            bool        `json:"is_up"`
+	ID              uuid.UUID `json:"id"`
+	DeviceName      string    `json:"device_name"`
+	Hostname        string    `json:"hostname"`
+	LastPingLatency int64     `json:"last_ping_latency"`
+	IsUp            bool      `json:"is_up"`
+	FailedPings     int64     `json:"failed_pings"`
+	AlertedDown     bool      `json:"alerted_down"`
 }
